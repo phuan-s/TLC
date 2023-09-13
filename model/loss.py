@@ -54,7 +54,7 @@ class TLCLoss(nn.Module):
 
     def get_final_output(self,x,y):
         index = torch.zeros_like(x,dtype=torch.uint8,device=x.device)
-        index.scatter_(1,y.data.view(-1,1),1)
+        index.scatter_(1,y.data.view(-1,1).long(),1) # 将y转化为one-hot编码index
         index_float = index.float()
         batch_m = torch.matmul(self.m_list[None,:],index_float.transpose(0,1))
         batch_m = batch_m.view((-1, 1))
