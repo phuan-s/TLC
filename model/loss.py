@@ -69,7 +69,9 @@ class TLCLoss(nn.Module):
             l = F.nll_loss(torch.log(alpha)-torch.log(S),y,weight=self.per_cls_weights_base,reduction="none")
 
             # KL
-            yi = F.one_hot(y,num_classes=alpha.shape[1])
+            if y.dtype == torch.int32:
+                y = torch.argmax(y, dim=1)  # 将浮点数张量转换为索引张量
+            yi = F.one_hot(y, num_classes=alpha.shape[1])
 
             # adjusted parameters of D(p|alpha)
             alpha_tilde = yi+(1-yi)*(alpha+1)
