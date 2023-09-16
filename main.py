@@ -13,39 +13,47 @@ import random
 from time import time
 
 def random_seed_setup(seed:int=None):
-    torch.backends.cudnn.enabled = True
+    # 设置随机种子，确保实验可重复性
+    torch.backends.cudnn.enabled = True # 启用cuda加速
     if seed:
         print('Set random seed as',seed)
-        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.deterministic = True # cuda确定性模式
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
         np.random.seed(seed)
         random.seed(seed)
     else:
-        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.benchmark = True # CuDNN的自动调优功能
 
 def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
     data_loader = config.init_obj('data_loader',module_data)
-    valid_data_loader = data_loader.split_validation()
+    valid_data_loader = data_loader.split_validation() # 划分训练集和验证集
 
     # build model architecture, then print to console
     model = config.init_obj('arch',module_arch)
+    # "arch": {
+    #     "type": "ResNet32Model",
+    #     "args": {
+    #         "num_classes": 100,
+    #         "num_experts": 3
+    #     }
+    # },
 
     # get loss
-    loss_class = getattr(module_loss, config["loss"]["type"])
+    loss_class = getattr(module_loss, config["loss"]["type"])  # "TLCLoss"
     criterion = config.init_obj('loss',module_loss, cls_num_list=data_loader.cls_num_list)
 
     # build optimizer, learning rate scheduler. delete every lines containing lr_scheduler for disabling scheduler
     optimizer = config.init_obj('optimizer',torch.optim,model.parameters())
 
+    # 学习率调度器————进行学习率预热、1、gamma、gamma平方的递减
     if "type" in config._config["lr_scheduler"]:
         lr_scheduler_args = config["lr_scheduler"]["args"]
         gamma = lr_scheduler_args["gamma"] if "gamma" in lr_scheduler_args else 0.1
         print("step1, step2, warmup_epoch, gamma:",(lr_scheduler_args["step1"],lr_scheduler_args["step2"],lr_scheduler_args["warmup_epoch"],gamma))
-
         def lr_lambda(epoch):
             if epoch >= lr_scheduler_args["step2"]:
                 lr = gamma*gamma
@@ -65,15 +73,16 @@ def main(config):
         model                                   ,
         criterion                               ,
         optimizer                               ,
-        config              = config            ,
-        data_loader         = data_loader       ,
-        valid_data_loader   = valid_data_loader ,
-        lr_scheduler        = lr_scheduler
+        config            ,
+        data_loader       ,
+        valid_data_loader ,
+        lr_scheduler
     )
     random_seed_setup()
     trainer.train()
 
 if __name__=='__main__':
+    # 使用了一些模块来解析命令行参数和配置文件，并启动了一个训练过程
     args = argparse.ArgumentParser(description='PyTorch Template')
     args.add_argument('-c','--config',default=None,type=str,help='config file path (default: None)')
 
