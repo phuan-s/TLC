@@ -28,7 +28,7 @@ def random_seed_setup(seed:int=None):
 def main(config):
     logger = config.get_logger('train')
 
-    # setup data_loader instances
+    # setup data_loader instances根据配置文件实例化一个对象
     data_loader = config.init_obj('data_loader',module_data)
     valid_data_loader = data_loader.split_validation() # 划分训练集和验证集
 

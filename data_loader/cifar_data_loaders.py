@@ -11,7 +11,9 @@ from .imagenet_lt_data_loaders import LT_Dataset
 
 class ImbalanceCIFAR100DataLoader(DataLoader):
     def __init__(self,data_dir,batch_size,num_workers,training=True,retain_epoch_size=True):
+        # 对图像做归一化处理
         normalize = transforms.Normalize(mean=[0.4914,0.4822,0.4465],std=[0.2023,0.1994,0.2010])
+        # 数据增强transform
         train_trsfm = transforms.Compose([
             transforms.RandomCrop(32,padding=4) ,
             transforms.RandomHorizontalFlip()   ,
@@ -21,13 +23,16 @@ class ImbalanceCIFAR100DataLoader(DataLoader):
         ])
         test_trsfm = transforms.Compose([transforms.ToTensor(),normalize])
 
+        #  长尾训练集 均匀测试集
         if training:
             self.dataset = IMBALANCECIFAR100(data_dir,train=True,download=True,transform=train_trsfm)
+            # 验证数据集（训练模式用）
             self.val_dataset = datasets.CIFAR100(data_dir,train=False,download=True,transform=test_trsfm)
         else:
             self.dataset = datasets.CIFAR100(data_dir,train=False,download=True,transform=test_trsfm)
             self.val_dataset = None
 
+        # 类别class数统计
         num_classes = max(self.dataset.targets)+1
         assert num_classes == 100
 

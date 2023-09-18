@@ -59,7 +59,7 @@ class TLCLoss(nn.Module):
         batch_m = torch.matmul(self.m_list[None,:],index_float.transpose(0,1))
         batch_m = batch_m.view((-1, 1))
         x_m = x-30*batch_m
-        return torch.exp(torch.where(index,x_m,x))
+        return torch.exp(torch.where(index.bool(),x_m,x))
 
     def forward(self,x,y,epoch,extra_info=None):
         loss = 0
@@ -70,7 +70,7 @@ class TLCLoss(nn.Module):
 
             # KL
             if y.dtype == torch.int32:
-                y = torch.argmax(y, dim=1)  # 将浮点数张量转换为索引张量
+                y = y.to(torch.int64)
             yi = F.one_hot(y, num_classes=alpha.shape[1])
 
             # adjusted parameters of D(p|alpha)

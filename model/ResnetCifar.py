@@ -80,9 +80,12 @@ class ResNet_s(nn.Module):
     def forward(self,x):
         x = F.relu(self.bn1(self.conv1(x)))
 
+        # outs用于存储各个专家的输出
         outs = []
         self.logits = outs
+        # b0用于暂存上一轮的evidence参数
         b0 = None
+        # 权重（用于动态重加权）
         self.w = [torch.ones(len(x),dtype=torch.bool,device=x.device)]
 
         for i in self.use_experts:
@@ -92,14 +95,16 @@ class ResNet_s(nn.Module):
             xi = F.avg_pool2d(xi,xi.shape[3])
             xi = xi.flatten(1)
             xi = self.linears[i](xi)
+            # 不同于标准的 ResNet，通常不会在分类层之前引入如此大的缩放因子。
             xi = xi*30
             outs.append(xi)
 
-            # evidential
+            # evidential计算
+            # 去掉了分类层softmax，用a non-negative activation function替代
             alpha = torch.exp(xi)+1
             S = alpha.sum(dim=1,keepdim=True)
-            b = (alpha-1)/S
-            u = self.num_classes/S.squeeze(-1)
+            b = (alpha-1)/S # belief mass
+            u = self.num_classes/S.squeeze(-1) # 移除S维度中维度为1的维度，方便计算
 
             # update w
             if b0 is None:
@@ -108,9 +113,9 @@ class ResNet_s(nn.Module):
                 bb = b0.view(-1,b0.shape[1],1)@b.view(-1,1,b.shape[1])
                 C = bb.sum(dim=[1,2])-bb.diagonal(dim1=1,dim2=2).sum(dim=1)
             b0 = b
-            self.w.append(self.w[-1]*u/(1-C))
+            self.w.append(self.w[-1]*u/(1-C)) # prefix weights计算
 
-        # dynamic reweighting
+        # dynamic reweighting (e前面的权重)
         exp_w = [torch.exp(wi/self.eta) for wi in self.w]
         exp_w = [wi/wi.sum() for wi in exp_w]
         exp_w = [wi.unsqueeze(-1) for wi in exp_w]
